@@ -1,7 +1,10 @@
 package trees;
 
 import java.io.*;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 
 public class B {
     public static void main(String[] args) throws IOException {
@@ -9,83 +12,110 @@ public class B {
         BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(System.out));
 
         int n = Integer.parseInt(reader.readLine());
-        Map<String, List<String>> pairs = new HashMap<>();
+
+        Map<String, Person> pairs = new TreeMap<>();
 
         for (int i = 0; i < n - 1; i++) {
             String[] pair = reader.readLine().split(" ");
             String child = pair[0];
             String parent = pair[1];
-            if (pairs.containsKey(parent)) {
-                pairs.get(parent).add(child);
+            if (!pairs.containsKey(child)) {
+                pairs.put(child, new Person(child, parent));
             } else {
-                pairs.put(parent, new ArrayList<>() {{
-                    add(child);
-                }});
+                Person person = pairs.get(child);
+                person.setParent(parent);
+                pairs.put(child, person);
+            }
+            if (pairs.containsKey(parent)) {
+                Person person = pairs.get(parent);
+                person.addChild(pairs.get(child));
+                pairs.put(parent, person);
+            } else {
+                Person person = new Person(parent, null);
+                person.addChild(pairs.get(child));
+                pairs.put(parent, person);
+            }
+
+        }
+
+        Person root = null;
+
+        for (Person person : pairs.values()) {
+            if (person.getParent() == null) {
+                root = person;
             }
         }
 
-        String root = null;
-        Person parent = null;
-
-        for (String parentName : pairs.keySet()) {
-            boolean flag = false;
-            for (List<String> person : pairs.values()) {
-                if (person.contains(parentName)) {
-                    flag = true;
-                    break;
-                }
-            }
-            if (!flag) {
-                root = parentName;
-                break;
-            }
-        }
-
-
-        Map<String, Integer> people = new TreeMap<>();
-        people.put(root, 0);
-        int level = 1;
-        List<String> currentLevel = new ArrayList<>();
-        List<String> lastLevel = new ArrayList<>();
-        List<Integer> childCount = new ArrayList<>();
+        List<List<Person>> levels = new ArrayList<>();
+        levels.add(List.of(root));
+        List<Person> lastLevel = new ArrayList<>();
         lastLevel.add(root);
 
-        while (!lastLevel.isEmpty()) {
-            for (String person : lastLevel) {
-                int count = 0;
-                if (pairs.get(person) != null) {
-                    currentLevel.addAll(pairs.get(person));
-                    count++;
-                }
-                childCount.add(count);
+        while (true) {
+            List<Person> currentLevel = new ArrayList<>();
+            for (Person person : lastLevel) {
+                currentLevel.addAll(person.getChildren());
+            }
+            if (currentLevel.isEmpty()) {
+                break;
             }
             lastLevel.clear();
-            int i = 0;
-            for (String current : currentLevel) {
-                people.put(current, childCount.get(i++));
-                lastLevel.add(current);
+            lastLevel.addAll(currentLevel);
+            levels.add(currentLevel);
+        }
+
+        for (int i = levels.size() - 2; i >= 0; i--) {
+            for (Person person : levels.get(i)) {
+                for (Person child : person.getChildren()) {
+                    person.setDescendantsCount(person.getDescendantsCount() + child.getDescendantsCount());
+                }
             }
-            childCount.clear();
-            currentLevel.clear();
         }
 
-
-        for (Map.Entry<String, Integer> entry : people.entrySet()) {
-            System.out.println(entry.getKey() + " " + entry.getValue());
+        for (Map.Entry<String, Person> entry : pairs.entrySet()) {
+            writer.write(entry.getKey() + " " + entry.getValue().getDescendantsCount() + "\n");
         }
-
 
         writer.close();
         reader.close();
     }
 
     private static class Person {
-        String name;
-        Person parent;
+        private String name;
+        private String parent;
+        private List<Person> children;
+        private Integer descendantsCount;
 
-        Person(String name, Person parent) {
+        Person(String name, String parent) {
             this.name = name;
+            this.children = new ArrayList<>();
             this.parent = parent;
+            this.descendantsCount = 0;
+        }
+
+        void addChild(Person child) {
+            children.add(child);
+            descendantsCount++;
+        }
+
+        Integer getDescendantsCount() {
+            return descendantsCount;
+        }
+
+        void setDescendantsCount(Integer count) {
+            this.descendantsCount = count;
+        }
+
+        void setParent(String parent) {
+            this.parent = parent;
+        }
+
+        String getParent() {
+            return parent;
+        }
+
+        List<Person> getChildren() {
+            return children;
         }
     }
 }
